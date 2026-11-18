@@ -1,6 +1,17 @@
 package app.katib.ui
 
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
@@ -36,7 +47,7 @@ fun Header(
         Row(Modifier.fillMaxWidth().padding(start = if (onBack != null) Space.xs else Space.gutter, end = Space.s, top = Space.m),
             verticalAlignment = Alignment.CenterVertically) {
             if (onBack != null) IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, "back") }
-            if (mark) { EngravedLogo(Modifier.size(34.dp)); Spacer(Modifier.width(Space.s + 2.dp)) }
+            if (mark) { EngravedLogo(Modifier.size(34.dp), animate = true); Spacer(Modifier.width(Space.s + 2.dp)) }
             Column(Modifier.weight(1f)) {
                 eyebrow?.let { Text(it.uppercase(), style = labelStyle, maxLines = 1) }
                 Text(title, style = if (onBack != null) MaterialTheme.typography.titleLarge else MaterialTheme.typography.headlineMedium,
@@ -57,8 +68,60 @@ fun KatibMark(modifier: Modifier = Modifier, tint: Color = E.c.ink) {
 
 /** The full engraved logo (alpha mask), tinted so it works on paper and night. */
 @Composable
-fun EngravedLogo(modifier: Modifier = Modifier) {
-    Image(painterResource(R.drawable.logo_engraved), null, modifier, colorFilter = ColorFilter.tint(E.c.ink))
+fun EngravedLogo(modifier: Modifier = Modifier, animate: Boolean = false) {
+    if (!animate) {
+        Image(painterResource(R.drawable.logo_engraved), null, modifier, colorFilter = ColorFilter.tint(E.c.ink)); return
+    }
+    // Entry flourish, replayed every time the app comes to the foreground:
+    // a warm glow swells and fades behind the mark while it gives a small damped wobble, like a stamp settling.
+    val rot = remember { Animatable(0f) }
+    val scale = remember { Animatable(1f) }
+    val glow = remember { Animatable(0f) }
+    val ctx = LocalContext.current
+    val reduceMotion = remember {
+        android.provider.Settings.Global.getFloat(ctx.contentResolver, android.provider.Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f
+    }
+    val owner = LocalLifecycleOwner.current
+    LaunchedEffect(owner) {
+        if (reduceMotion) return@LaunchedEffect
+        owner.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            rot.snapTo(0f); scale.snapTo(0.92f); glow.snapTo(0f)
+            coroutineScope {
+                launch { scale.animateTo(1f, spring(dampingRatio = 0.45f, stiffness = 260f)) }
+                launch {
+                    rot.animateTo(0f, keyframes {
+                        durationMillis = 950
+                        -6f at 120 using FastOutSlowInEasing
+                        4.5f at 280 using FastOutSlowInEasing
+                        -2.5f at 440 using FastOutSlowInEasing
+                        1.2f at 600 using FastOutSlowInEasing
+                        -0.4f at 760
+                    })
+                }
+                launch {
+                    glow.animateTo(1f, tween(380, easing = Motion.standard))
+                    glow.animateTo(0f, tween(1100, easing = LinearOutSlowInEasing))
+                }
+            }
+        }
+    }
+    val glowColor = E.c.signal
+    Box(modifier, contentAlignment = Alignment.Center) {
+        Canvas(Modifier.matchParentSize().graphicsLayer { scaleX = 1.9f; scaleY = 1.9f }) {
+            val a = glow.value
+            if (a > 0f) drawCircle(
+                androidx.compose.ui.graphics.Brush.radialGradient(
+                    listOf(glowColor.copy(alpha = 0.30f * a), glowColor.copy(alpha = 0.10f * a), Color.Transparent),
+                    center = center, radius = size.minDimension / 2),
+                radius = size.minDimension / 2)
+        }
+        Image(painterResource(R.drawable.logo_engraved), null,
+            Modifier.matchParentSize().graphicsLayer {
+                rotationZ = rot.value; scaleX = scale.value; scaleY = scale.value
+                transformOrigin = androidx.compose.ui.graphics.TransformOrigin(0.5f, 0.85f)   // pivot low, like it's resting on a desk
+            },
+            colorFilter = ColorFilter.tint(E.c.ink))
+    }
 }
 
 /** Tag: squared, hairline, mono caps. Replaces rounded pill chips. */

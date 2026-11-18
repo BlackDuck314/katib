@@ -136,7 +136,7 @@ class MainActivity : FragmentActivity() {
 private fun LockScreen(onUnlock: () -> Unit) {
     Column(Modifier.fillMaxSize().padding(Space.xl), verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally) {
-        EngravedLogo(Modifier.size(168.dp))
+        EngravedLogo(Modifier.size(168.dp), animate = true)
         Spacer(Modifier.height(Space.l))
         Text(stringResource(R.string.app_name), style = MaterialTheme.typography.displaySmall)
         Spacer(Modifier.height(Space.xs))
