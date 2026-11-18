@@ -76,7 +76,7 @@ flowchart TB
 | Threat | Mitigation | Residual risk |
 |---|---|---|
 | **I**: audio/transcript exfiltration over network | No code path sends them; `INTERNET` used by model downloader only | A malicious build could add one. Build from source or verify signer. |
-| **T**: tampered model download | HTTPS + **SHA-256 pinned** for Qwen3-ASR and Silero VAD; model hash recorded in transcript manifest | ⚠️ pyannote, WeSpeaker and Whisper base hashes are **not yet pinned** (planned) |
+| **T**: tampered model download | HTTPS + **SHA-256 pinned for every model** (mismatch → file deleted, install fails); model hash recorded in transcript manifest | A compromised upstream release *before* pinning; hashes were cross-checked against copies tested on-device |
 | **I**: download reveals Katib usage | Requests go to GitHub, carrying no user data | Network observer learns "this device downloaded ASR models" |
 
 ### Boundary ③: OS and other apps (T3, T4)
@@ -135,7 +135,6 @@ flowchart TB
 
 | Gap | Plan |
 |---|---|
-| Three models without pinned hashes | Pin SHA-256 for every model |
 | Device-clock timestamps | RFC 3161-style countersign by the owner's own server |
 | App lock is UI-only | Option: user-auth-bound key for *viewing* (trade-off: background transcription) |
 | Single-file deletion relies on overwrite | Per-file key escrow in DB so deletion = key deletion |

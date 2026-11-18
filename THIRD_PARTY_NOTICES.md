@@ -17,5 +17,5 @@ Katib's own code is MIT-licensed (see `LICENSE`). It bundles or downloads the fo
 | WeSpeaker ResNet34 (VoxCeleb) | downloaded at runtime by the user | Apache-2.0 (model weights: CC BY 4.0) |
 
 Model weights are not included in this repository. They're fetched from the sherpa-onnx GitHub
-releases on first use and checked against SHA-256 hashes where available. Check each upstream
+releases on first use and checked against SHA-256 hashes pinned in `asr/Models.kt`. Check each upstream
 project for its current license before redistributing.

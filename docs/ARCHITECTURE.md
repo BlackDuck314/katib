@@ -88,7 +88,7 @@ flowchart TB
 | `work/TranscribeWorker` | Expedited, foreground `CoroutineWorker`. Decrypts audio into memory, runs the pipeline, writes segments, matches speakers, seals the transcript. Survives app kill; orphaned jobs are re-queued at startup. |
 | `work/RetentionWorker` | Periodic. Shreds audio past its delete-at time. |
 | `asr/Pipeline` | sherpa-onnx inference: Silero VAD, Qwen3-ASR or Whisper, pyannote + WeSpeaker diarization, voice enrollment. |
-| `asr/Models` | Model catalogue, HTTPS download, SHA-256 check (where pinned), tar.bz2 extraction. |
+| `asr/Models` | Model catalogue, HTTPS download, SHA-256 check (pinned for every model), tar.bz2 extraction. |
 | `security/Crypto` | Keystore master key; wrap/unwrap data keys; DB passphrase; crypto-wipe. |
 | `security/Provenance` | Signing keys, Key Attestation chains, canonical payloads, hash-chained manifests, evidence bundles. |
 | `data/KatibDb` | SQLCipher-encrypted Room database: meetings, segments (+FTS), speakers, people, consent log, provenance records. |

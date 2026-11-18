@@ -20,7 +20,7 @@ data class ModelSpec(
     val url: String,
     val sizeMb: Int,
     val required: List<String>,
-    val sha256: String? = null,
+    val sha256: String,
     val archive: Boolean = url.endsWith(".tar.bz2"),
 )
 
@@ -33,11 +33,13 @@ object Models {
         "seg", "Speaker segmentation (pyannote 3.0)",
         "$REL/speaker-segmentation-models/sherpa-onnx-pyannote-segmentation-3-0.tar.bz2", 7,
         listOf("sherpa-onnx-pyannote-segmentation-3-0/model.onnx"),
+        "24615ee884c897d9d2ba09bb4d30da6bb1b15e685065962db5b02e76e4996488",
     )
     val EMBEDDING = ModelSpec(
         "emb", "Speaker embedding (WeSpeaker ResNet34)",
         "$REL/speaker-recongition-models/wespeaker_en_voxceleb_resnet34_LM.onnx", 27,
         listOf("wespeaker_en_voxceleb_resnet34_LM.onnx"),
+        "e9848563da86f263117134dfd7ad63c92355b37de492b55e325400c9d9c39012",
     )
     private const val QWEN = "sherpa-onnx-qwen3-asr-0.6B-int8-2026-03-25"
     val QWEN3 = ModelSpec(
@@ -49,6 +51,7 @@ object Models {
     val WHISPER_BASE = ModelSpec(
         "whisper-base", "Whisper base · fast, multilingual", "$REL/asr-models/$WB.tar.bz2", 208,
         listOf("$WB/base-encoder.int8.onnx", "$WB/base-decoder.int8.onnx", "$WB/base-tokens.txt"),
+        "911b2083efd7c0dca2ac3b358b75222660dc09fb716d64fbfc417ba6c99ff3de",
     )
 
     val ASR = listOf(QWEN3, WHISPER_BASE)
@@ -81,10 +84,8 @@ object Models {
                 }
             }
         }
-        m.sha256?.let { want ->
-            val got = md.digest().joinToString("") { "%02x".format(it) }
-            if (got != want) { tmp.delete(); error("Checksum mismatch for ${m.title}") }
-        }
+        val got = md.digest().joinToString("") { "%02x".format(it) }
+        if (got != m.sha256) { tmp.delete(); error("Checksum mismatch for ${m.title}") }
         if (!m.archive) {
             tmp.renameTo(File(root, m.required.first()))
         } else {
