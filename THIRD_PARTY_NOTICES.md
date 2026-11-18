@@ -6,7 +6,7 @@ Katib's own code is MIT-licensed (see `LICENSE`). It bundles or downloads the fo
 |---|---|---|
 | sherpa-onnx 2.0.1 (`app/libs/sherpa-onnx-static-2.0.1.aar`) | bundled native runtime | Apache-2.0 |
 | ONNX Runtime (inside sherpa-onnx) | bundled | MIT |
-| IBM Plex Sans Arabic, IBM Plex Mono (`app/src/main/res/font`) | bundled fonts | SIL Open Font License 1.1 |
+| IBM Plex Sans Arabic, IBM Plex Mono, Instrument Serif, Amiri (`app/src/main/res/font`) | bundled fonts | SIL Open Font License 1.1 |
 | SQLCipher for Android | Gradle dependency | BSD-style (Zetetic) |
 | AndroidX / Jetpack Compose / Room / WorkManager | Gradle dependencies | Apache-2.0 |
 | Apache Commons Compress | Gradle dependency | Apache-2.0 |

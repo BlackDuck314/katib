@@ -1,14 +1,18 @@
 package app.katib.ui
 
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import app.katib.R
@@ -20,63 +24,102 @@ val Plex = FontFamily(
     Font(R.font.plex_arabic_bold, FontWeight.Bold),
 )
 val PlexMono = FontFamily(Font(R.font.plex_mono_regular))
+/** Display faces: a Latin editorial serif, and Amiri (classical Naskh, the scribe's hand) for Arabic. */
+val InstrumentSerif = FontFamily(
+    Font(R.font.instrument_serif_regular, FontWeight.Normal),
+    Font(R.font.instrument_serif_italic, FontWeight.Normal, FontStyle.Italic),
+)
+val Amiri = FontFamily(Font(R.font.amiri_regular, FontWeight.Normal), Font(R.font.amiri_bold, FontWeight.Bold))
 
+/** Semantic colour tokens (design/tokens.json → semantic.color). */
 @Immutable
 data class KatibColors(
-    val paper: Color, val surface: Color, val ink: Color, val muted: Color, val line: Color,
-    val accent: Color, val onAccent: Color, val rec: Color, val ok: Color,
+    val paper: Color,     // bg.canvas
+    val surface: Color,   // bg.raised
+    val ink: Color,       // text.primary
+    val muted: Color,     // text.muted
+    val line: Color,      // border.hairline
+    val primary: Color,   // action.primary (solid ink, no brand hue)
+    val onPrimary: Color,
+    val signal: Color,    // signal.live: recording, destructive, warnings. Never decorative.
+    val onSignal: Color,
+    val verified: Color,  // status.verified
     val speakers: List<Color>,
+    val dark: Boolean,
 )
 
-// Calm editorial palette: warm paper + ink, one deep-teal accent, signal orange only for "recording".
-private val Light = KatibColors(
-    paper = Color(0xFFF6F3EE), surface = Color(0xFFEDE8E0), ink = Color(0xFF1A1A18),
-    muted = Color(0xFF5F5B54), line = Color(0xFFD8D1C6),
-    accent = Color(0xFF0F5E5A), onAccent = Color(0xFFF6F3EE), rec = Color(0xFFC2410C), ok = Color(0xFF2F6B3A),
-    // Okabe-Ito derived, darkened for text contrast on paper.
-    speakers = listOf(Color(0xFF0072B2), Color(0xFFB35900), Color(0xFF00785A), Color(0xFFAA3377),
-        Color(0xFF6B5B00), Color(0xFF4B4B9E), Color(0xFF8A4F00), Color(0xFF3A6F8F)),
-)
-private val Dark = KatibColors(
-    paper = Color(0xFF141413), surface = Color(0xFF1F1E1C), ink = Color(0xFFEDEAE4),
-    muted = Color(0xFFA29C92), line = Color(0xFF34322E),
-    accent = Color(0xFF5FB3AC), onAccent = Color(0xFF0C1F1E), rec = Color(0xFFFF8A4C), ok = Color(0xFF7BC489),
-    speakers = listOf(Color(0xFF56B4E9), Color(0xFFE69F00), Color(0xFF3CC7A0), Color(0xFFEE88BB),
-        Color(0xFFE6D74C), Color(0xFF9F9FE8), Color(0xFFF0B060), Color(0xFF8CC4E6)),
-)
+private val Light = with(Primitive) {
+    KatibColors(
+        paper = paper50, surface = paper100, ink = ink900, muted = ink600, line = paper200,
+        primary = ink900, onPrimary = paper50, signal = vermilion600, onSignal = Color.White,
+        verified = moss700, speakers = speakersLight, dark = false,
+    )
+}
+private val Dark = with(Primitive) {
+    KatibColors(
+        paper = night950, surface = night900, ink = chalk100, muted = chalk400, line = night700,
+        primary = chalk100, onPrimary = night950, signal = vermilion400, onSignal = night950,
+        verified = moss300, speakers = speakersDark, dark = true,
+    )
+}
 
 val LocalKatib = staticCompositionLocalOf { Light }
+val LocalDisplayFont = staticCompositionLocalOf { InstrumentSerif }
 
-object E { val c: KatibColors @Composable get() = LocalKatib.current }
+object E {
+    val c: KatibColors @Composable get() = LocalKatib.current
+    /** Display family for the current UI language. */
+    val display: FontFamily @Composable get() = LocalDisplayFont.current
+}
+
+/** semantic.type.label: mono, uppercase, tracked. Used for section labels, tags and metadata. */
+val labelStyle @Composable get() = TextStyle(fontFamily = PlexMono, fontSize = 11.sp, letterSpacing = 1.2.sp, color = E.c.muted)
 
 @Composable
 fun KatibTheme(content: @Composable () -> Unit) {
     val dark = isSystemInDarkTheme()
     val c = if (dark) Dark else Light
+    val arabic = LocalConfiguration.current.locales[0].language == "ar"
+    val display = if (arabic) Amiri else InstrumentSerif
     val scheme = (if (dark) darkColorScheme() else lightColorScheme()).copy(
-        primary = c.accent, onPrimary = c.onAccent, background = c.paper, onBackground = c.ink,
+        primary = c.primary, onPrimary = c.onPrimary, background = c.paper, onBackground = c.ink,
         surface = c.paper, onSurface = c.ink, surfaceVariant = c.surface, onSurfaceVariant = c.muted,
-        surfaceContainer = c.surface, surfaceContainerHigh = c.surface, surfaceContainerLow = c.paper,
-        surfaceContainerHighest = c.surface,
-        outline = c.line, outlineVariant = c.line, secondaryContainer = c.surface, onSecondaryContainer = c.ink,
-        error = c.rec, primaryContainer = c.surface, onPrimaryContainer = c.ink,
+        surfaceContainerLowest = c.paper, surfaceContainerLow = c.paper, surfaceContainer = c.surface,
+        surfaceContainerHigh = c.surface, surfaceContainerHighest = c.surface, surfaceTint = Color.Transparent,
+        outline = c.line, outlineVariant = c.line,
+        secondary = c.ink, onSecondary = c.paper, secondaryContainer = c.ink, onSecondaryContainer = c.paper,
+        primaryContainer = c.surface, onPrimaryContainer = c.ink,
+        tertiary = c.signal, onTertiary = c.onSignal,
+        error = c.signal, onError = c.onSignal,
     )
     val base = Typography()
     fun TextStyle.p() = copy(fontFamily = Plex)
+    // Arabic Naskh needs more line height and a slightly smaller size than the Latin serif for equal visual weight.
+    fun TextStyle.d(size: Int, lh: Int) = copy(fontFamily = display, fontWeight = FontWeight.Normal,
+        fontSize = (if (arabic) size - 4 else size).sp, lineHeight = (if (arabic) lh + 10 else lh).sp, letterSpacing = 0.sp)
     val type = Typography(
-        displaySmall = base.displaySmall.p().copy(fontWeight = FontWeight.SemiBold, fontSize = 34.sp),
-        headlineSmall = base.headlineSmall.p().copy(fontWeight = FontWeight.SemiBold),
-        titleLarge = base.titleLarge.p().copy(fontWeight = FontWeight.SemiBold),
-        titleMedium = base.titleMedium.p().copy(fontWeight = FontWeight.Medium),
-        titleSmall = base.titleSmall.p().copy(fontWeight = FontWeight.Medium),
-        bodyLarge = base.bodyLarge.p().copy(fontSize = 18.sp, lineHeight = 28.sp),
+        displayLarge = base.displayLarge.d(56, 58),
+        displayMedium = base.displayMedium.d(44, 48),
+        displaySmall = base.displaySmall.d(40, 44),
+        headlineLarge = base.headlineLarge.d(34, 38),
+        headlineMedium = base.headlineMedium.d(30, 34),
+        headlineSmall = base.headlineSmall.d(28, 32),
+        titleLarge = base.titleLarge.d(24, 28),
+        titleMedium = base.titleMedium.p().copy(fontWeight = FontWeight.Medium, fontSize = 17.sp),
+        titleSmall = base.titleSmall.p().copy(fontWeight = FontWeight.SemiBold, fontSize = 14.sp),
+        bodyLarge = base.bodyLarge.p().copy(fontSize = 17.sp, lineHeight = 27.sp),
         bodyMedium = base.bodyMedium.p().copy(fontSize = 15.sp, lineHeight = 22.sp),
-        bodySmall = base.bodySmall.p(),
-        labelLarge = base.labelLarge.p().copy(fontWeight = FontWeight.Medium),
-        labelMedium = base.labelMedium.p(),
+        bodySmall = base.bodySmall.p().copy(fontSize = 13.sp, lineHeight = 18.sp),
+        labelLarge = base.labelLarge.p().copy(fontWeight = FontWeight.Medium, fontSize = 15.sp),
+        labelMedium = base.labelMedium.p().copy(fontWeight = FontWeight.Medium),
         labelSmall = base.labelSmall.p(),
     )
-    androidx.compose.runtime.CompositionLocalProvider(LocalKatib provides c) {
-        MaterialTheme(colorScheme = scheme, typography = type, content = content)
+    val shapes = Shapes(
+        extraSmall = RoundedCornerShape(Radius.tag), small = RoundedCornerShape(Radius.card),
+        medium = RoundedCornerShape(Radius.card), large = RoundedCornerShape(Radius.sheet),
+        extraLarge = RoundedCornerShape(Radius.sheet),
+    )
+    CompositionLocalProvider(LocalKatib provides c, LocalDisplayFont provides display) {
+        MaterialTheme(colorScheme = scheme, typography = type, shapes = shapes, content = content)
     }
 }

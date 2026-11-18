@@ -18,6 +18,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.lifecycleScope
@@ -43,7 +44,9 @@ class MainActivity : FragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         // Hide content from the app switcher and block screenshots.
-        window.setFlags(WindowManager.LayoutParams.FLAG_SECURE, WindowManager.LayoutParams.FLAG_SECURE)
+        // Debug builds only: a marker file (created via `adb shell run-as`) allows screenshots for UI review.
+        val allowScreens = app.katib.BuildConfig.DEBUG && java.io.File(filesDir, "test/allow_screens").exists()
+        if (!allowScreens) window.setFlags(WindowManager.LayoutParams.FLAG_SECURE, WindowManager.LayoutParams.FLAG_SECURE)
         enableEdgeToEdge()
         locked.value = Prefs(this).lockEnabled
         // Seal each finished recording with the user's biometric-gated hardware key.
@@ -131,13 +134,19 @@ class MainActivity : FragmentActivity() {
 
 @Composable
 private fun LockScreen(onUnlock: () -> Unit) {
-    Column(Modifier.fillMaxSize().padding(32.dp), verticalArrangement = Arrangement.Center,
+    Column(Modifier.fillMaxSize().padding(Space.xl), verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally) {
-        Icon(Icons.Outlined.Lock, null, Modifier.size(40.dp), tint = E.c.ink)
-        Spacer(Modifier.height(16.dp))
-        Text(stringResource(R.string.locked), style = MaterialTheme.typography.titleLarge)
-        Spacer(Modifier.height(24.dp))
-        Button(onClick = onUnlock) { Text(stringResource(R.string.unlock)) }
+        EngravedLogo(Modifier.size(168.dp))
+        Spacer(Modifier.height(Space.l))
+        Text(stringResource(R.string.app_name), style = MaterialTheme.typography.displaySmall)
+        Spacer(Modifier.height(Space.xs))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Outlined.Lock, null, Modifier.size(14.dp), tint = E.c.muted)
+            Spacer(Modifier.width(6.dp))
+            Text(stringResource(R.string.locked).uppercase(), style = labelStyle)
+        }
+        Spacer(Modifier.height(Space.xl))
+        KButton(onClick = onUnlock) { Text(stringResource(R.string.unlock)) }
     }
 }
 
@@ -170,10 +179,17 @@ fun KatibNav() {
                                         popUpTo("record") { saveState = true }; launchSingleTop = true; restoreState = true
                                     }
                                 },
-                                icon = { Icon(t.icon, null) },
-                                label = { Text(stringResource(t.label)) },
+                                icon = {
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                        Icon(t.icon, null)
+                                        Spacer(Modifier.height(Space.xs))
+                                        // Selected tab: a short ink rule under the icon instead of Material's pill.
+                                        Box(Modifier.width(if (route == t.route) 16.dp else 0.dp).height(2.dp).background(E.c.ink))
+                                    }
+                                },
+                                label = { Text(stringResource(t.label).uppercase(), style = labelStyle.copy(color = androidx.compose.ui.graphics.Color.Unspecified, fontSize = 10.sp)) },
                                 colors = NavigationBarItemDefaults.colors(
-                                    selectedIconColor = E.c.onAccent, indicatorColor = E.c.accent,
+                                    selectedIconColor = E.c.ink, indicatorColor = androidx.compose.ui.graphics.Color.Transparent,
                                     selectedTextColor = E.c.ink, unselectedIconColor = E.c.muted, unselectedTextColor = E.c.muted,
                                 ),
                             )

@@ -309,5 +309,6 @@ guarantee. See [THREAT_MODEL.md](THREAT_MODEL.md).
 - Kotlin 2.1, AGP 8.7, Compose BOM 2024.12, Room 2.6 + KSP, WorkManager 2.10,
   SQLCipher 4.6, sherpa-onnx 2.0.1 (static AAR, arm64-v8a).
 - `minSdk 29` (Android 10), `targetSdk 35`. Tested on Android 17 (Galaxy S23 Ultra).
+- Debug builds skip `FLAG_SECURE` only if `files/test/allow_screens` exists (for UI screenshots via adb).
 - Debug builds include an exported `DebugImport` receiver for scripted testing (import WAV,
   export bundle). It is in `src/debug` only and **not present in release builds**.

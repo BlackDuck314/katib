@@ -5,6 +5,7 @@ import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -67,100 +68,85 @@ fun RecordScreen(vm: AppVm, onSettings: () -> Unit, onOpen: (Long) -> Unit) {
     }
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-        Header(stringResource(R.string.app_name), onSettings = onSettings)
+        Header(stringResource(R.string.app_name), onSettings = onSettings, mark = true)
         // Persistent privacy cues
-        Row(Modifier.padding(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Chip(stringResource(R.string.on_device_only), dot = E.c.ok)
+        Row(Modifier.padding(horizontal = Space.gutter), horizontalArrangement = Arrangement.spacedBy(Space.s)) {
+            Chip(stringResource(R.string.on_device_only), color = E.c.ink, dot = E.c.verified)
             Chip(stringResource(R.string.sync_off))
             Chip(stringResource(R.string.audio_kept_days, vm.prefs.retentionDays))
         }
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(Space.l))
 
         if (!rec.recording) {
-            // Mode: consent-gated meeting vs personal note (owner only)
-            SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth().padding(horizontal = 20.dp)) {
-                listOf(false to R.string.mode_meeting, true to R.string.mode_note).forEachIndexed { i, (v, r) ->
-                    SegmentedButton(selected = personal == v, onClick = { vm.personal.value = v },
-                        shape = SegmentedButtonDefaults.itemShape(i, 2),
-                        colors = SegmentedButtonDefaults.colors(activeContainerColor = E.c.accent, activeContentColor = E.c.onAccent,
-                            inactiveContainerColor = E.c.paper, activeBorderColor = E.c.accent, inactiveBorderColor = E.c.line)) {
-                        Text(stringResource(r))
+            // Mode: consent-gated meeting vs personal note (owner only). Ledger tabs, not a pill toggle.
+            ModeTabs(personal) { vm.personal.value = it }
+            Spacer(Modifier.height(Space.l))
+            TitleInput(title, stringResource(if (personal) R.string.mode_note else R.string.meeting_title_hint)) { vm.title.value = it }
+            Spacer(Modifier.height(Space.m))
+            if (personal) {
+                Panel(Modifier.padding(horizontal = Space.gutter).fillMaxWidth()) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Outlined.EditNote, null, tint = E.c.ink)
+                        Spacer(Modifier.width(Space.m))
+                        Text(stringResource(R.string.note_explainer), style = MaterialTheme.typography.bodyMedium, color = E.c.muted)
                     }
                 }
-            }
-            Spacer(Modifier.height(12.dp))
-            OutlinedTextField(
-                value = title, onValueChange = { vm.title.value = it },
-                label = { Text(stringResource(R.string.meeting_title_hint)) }, singleLine = true,
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
-            )
-            Spacer(Modifier.height(16.dp))
-            if (personal) {
-                Row(Modifier.padding(horizontal = 20.dp).fillMaxWidth().clip(RoundedCornerShape(12.dp))
-                    .border(1.dp, E.c.line, RoundedCornerShape(12.dp)).padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Outlined.EditNote, null, tint = E.c.accent)
-                    Spacer(Modifier.width(12.dp))
-                    Text(stringResource(R.string.note_explainer), style = MaterialTheme.typography.bodyMedium, color = E.c.muted)
-                }
             } else ConsentCard(consent) { showConsent = true }
-            Row(Modifier.fillMaxWidth().clickable { vm.withLocation.value = !withLoc }.padding(horizontal = 20.dp, vertical = 6.dp),
+            Row(Modifier.fillMaxWidth().clickable { vm.withLocation.value = !withLoc }.padding(horizontal = Space.gutter, vertical = Space.s),
                 verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Outlined.LocationOn, null, tint = if (withLoc) E.c.accent else E.c.muted)
-                Spacer(Modifier.width(12.dp))
+                Icon(Icons.Outlined.LocationOn, null, tint = if (withLoc) E.c.ink else E.c.muted)
+                Spacer(Modifier.width(Space.m))
                 Text(stringResource(R.string.attach_location), style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-                Switch(withLoc, { vm.withLocation.value = it }, colors = SwitchDefaults.colors(checkedTrackColor = E.c.accent))
+                Switch(withLoc, { vm.withLocation.value = it }, colors = kSwitchColors())
             }
         }
 
-        Spacer(Modifier.height(if (rec.recording) 24.dp else 40.dp))
+        Spacer(Modifier.height(if (rec.recording) Space.l else Space.xl))
+        val live = rec.recording && !rec.paused
         val stateText = when {
             rec.recording && rec.paused -> stringResource(R.string.paused)
             rec.recording -> stringResource(R.string.recording)
             else -> stringResource(R.string.ready_to_record)
         }
-        Text(stateText.uppercase(), style = MaterialTheme.typography.labelLarge.copy(letterSpacing = 2.sp),
-            color = if (rec.recording && !rec.paused) E.c.rec else E.c.muted,
-            modifier = Modifier.align(Alignment.CenterHorizontally))
+        Row(Modifier.align(Alignment.CenterHorizontally), verticalAlignment = Alignment.CenterVertically) {
+            if (live) { LiveDot(); Spacer(Modifier.width(Space.s)) }
+            Text(stateText.uppercase(), style = labelStyle.copy(color = if (live) E.c.signal else E.c.muted, fontSize = 12.sp, letterSpacing = 2.sp))
+        }
         Text(fmtClock(rec.elapsedMs / 1000f),
-            style = TextStyle(fontFamily = PlexMono, fontSize = 56.sp, color = E.c.ink),
+            style = TextStyle(fontFamily = PlexMono, fontSize = 64.sp, color = if (rec.recording) E.c.ink else E.c.muted, letterSpacing = (-1).sp),
             modifier = Modifier.align(Alignment.CenterHorizontally))
-        Spacer(Modifier.height(12.dp))
-        LevelMeter(rec.levels, active = rec.recording && !rec.paused,
-            modifier = Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 28.dp))
-        Spacer(Modifier.height(28.dp))
+        Spacer(Modifier.height(Space.s))
+        LevelMeter(rec.levels, active = live,
+            modifier = Modifier.fillMaxWidth().height(56.dp).padding(horizontal = Space.xl))
+        Spacer(Modifier.height(Space.l))
 
         val enabled = rec.recording || consent != null || personal
-        val bg by animateColorAsState(if (!enabled) E.c.line else E.c.rec, label = "rec")
         Row(Modifier.align(Alignment.CenterHorizontally), verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(28.dp)) {
+            horizontalArrangement = Arrangement.spacedBy(Space.xl)) {
             if (rec.recording) {
-                FilledTonalIconButton(onClick = { if (rec.paused) vm.resume() else vm.pause() }, modifier = Modifier.size(56.dp)) {
+                KOutlinedButton(onClick = { if (rec.paused) vm.resume() else vm.pause() }, modifier = Modifier.size(56.dp)) {
                     Icon(if (rec.paused) Icons.Outlined.PlayArrow else Icons.Outlined.Pause,
                         stringResource(if (rec.paused) R.string.resume else R.string.pause))
                 }
             }
             val desc = stringResource(if (rec.recording) R.string.stop_recording else R.string.start_recording)
-            Box(
-                Modifier.size(104.dp).clip(CircleShape).border(4.dp, bg.copy(alpha = 0.35f), CircleShape).padding(8.dp)
-                    .clip(CircleShape).background(bg)
-                    .clickable(enabled = enabled) { if (rec.recording) vm.stopRecording() else start() }
-                    .semantics { contentDescription = desc },
-                contentAlignment = Alignment.Center,
-            ) {
-                if (rec.recording) Box(Modifier.size(30.dp).clip(RoundedCornerShape(6.dp)).background(E.c.paper))
-                else Icon(Icons.Outlined.Mic, null, tint = E.c.paper, modifier = Modifier.size(38.dp))
+            RecordButton(recording = rec.recording, live = live, enabled = enabled, description = desc) {
+                if (rec.recording) vm.stopRecording() else start()
             }
             if (rec.recording) Spacer(Modifier.size(56.dp))
         }
-        Spacer(Modifier.height(20.dp))
-        if (permDenied) Text(stringResource(R.string.mic_permission), color = E.c.rec,
-            modifier = Modifier.padding(horizontal = 20.dp).align(Alignment.CenterHorizontally))
+        Spacer(Modifier.height(Space.m))
+        if (!rec.recording && !enabled) Text(stringResource(R.string.consent_required), style = labelStyle,
+            modifier = Modifier.align(Alignment.CenterHorizontally))
+        if (permDenied) Text(stringResource(R.string.mic_permission), color = E.c.signal,
+            modifier = Modifier.padding(horizontal = Space.gutter).align(Alignment.CenterHorizontally))
         if (!hasAsr && !rec.recording) {
-            Column(Modifier.padding(20.dp).fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(E.c.surface).padding(16.dp)) {
+            Panel(Modifier.padding(Space.gutter).fillMaxWidth(), fill = E.c.surface) {
                 Text(stringResource(R.string.model_missing), style = MaterialTheme.typography.bodyMedium)
-                TextButton(onClick = onSettings) { Text(stringResource(R.string.open_models)) }
+                TextButton(onClick = onSettings, contentPadding = PaddingValues(0.dp)) { Text(stringResource(R.string.open_models)) }
             }
         }
+        Spacer(Modifier.height(Space.l))
     }
 
     if (showConsent) ConsentDialog(withLoc, onDismiss = { showConsent = false }) { p, m -> vm.consent.value = ConsentDraft(p, m); showConsent = false }
@@ -169,20 +155,92 @@ fun RecordScreen(vm: AppVm, onSettings: () -> Unit, onOpen: (Long) -> Unit) {
 @Composable
 private fun ConsentCard(consent: ConsentDraft?, onClick: () -> Unit) {
     val ok = consent != null
-    Row(
-        Modifier.padding(horizontal = 20.dp).fillMaxWidth().clip(RoundedCornerShape(12.dp))
-            .border(1.dp, if (ok) E.c.ok else E.c.line, RoundedCornerShape(12.dp))
-            .clickable(onClick = onClick).padding(16.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Icon(if (ok) Icons.Outlined.VerifiedUser else Icons.Outlined.Groups, null, tint = if (ok) E.c.ok else E.c.ink)
-        Spacer(Modifier.width(12.dp))
-        Column(Modifier.weight(1f)) {
-            Text(if (ok) stringResource(R.string.consent_confirmed, consent!!.method) else stringResource(R.string.consent_required),
-                style = MaterialTheme.typography.titleSmall)
-            if (ok) Text(consent!!.participants, style = MaterialTheme.typography.bodyMedium, color = E.c.muted, maxLines = 2)
+    Panel(Modifier.padding(horizontal = Space.gutter).fillMaxWidth().clip(RoundedCornerShape(Radius.card)).clickable(onClick = onClick),
+        border = if (ok) E.c.verified else E.c.ink) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(if (ok) Icons.Outlined.VerifiedUser else Icons.Outlined.Groups, null, tint = if (ok) E.c.verified else E.c.ink)
+            Spacer(Modifier.width(Space.m))
+            Column(Modifier.weight(1f)) {
+                Text(if (ok) stringResource(R.string.consent_confirmed, consent!!.method) else stringResource(R.string.consent_required),
+                    style = MaterialTheme.typography.titleSmall)
+                if (ok) Text(consent!!.participants, style = MaterialTheme.typography.bodyMedium, color = E.c.muted, maxLines = 2)
+            }
+            if (!ok) Text(stringResource(R.string.confirm_consent).uppercase(), style = labelStyle.copy(color = E.c.ink))
         }
-        if (!ok) Text(stringResource(R.string.confirm_consent), color = E.c.accent, style = MaterialTheme.typography.labelLarge)
+    }
+}
+
+/** Two-option ledger tabs: label text with an ink rule under the selected one. */
+@Composable
+private fun ModeTabs(personal: Boolean, onChange: (Boolean) -> Unit) {
+    Row(Modifier.fillMaxWidth().padding(horizontal = Space.gutter)) {
+        listOf(false to R.string.mode_meeting, true to R.string.mode_note).forEach { (v, r) ->
+            val sel = personal == v
+            val rule by animateColorAsState(if (sel) E.c.ink else E.c.line, tween(Motion.base, easing = Motion.standard), label = "tab")
+            Column(Modifier.weight(1f).clickable { onChange(v) }) {
+                Text(stringResource(r), style = MaterialTheme.typography.titleMedium, color = if (sel) E.c.ink else E.c.muted,
+                    modifier = Modifier.padding(vertical = Space.s))
+                Box(Modifier.fillMaxWidth().height(if (sel) 2.dp else Stroke.hairline).background(rule))
+            }
+        }
+    }
+}
+
+/** Title input set in the display serif, underlined like a form field on paper. */
+@Composable
+private fun TitleInput(value: String, placeholder: String, onChange: (String) -> Unit) {
+    val style = MaterialTheme.typography.headlineSmall.copy(color = E.c.ink)
+    Column(Modifier.padding(horizontal = Space.gutter)) {
+        androidx.compose.foundation.text.BasicTextField(
+            value, onChange, singleLine = true, textStyle = style,
+            cursorBrush = androidx.compose.ui.graphics.SolidColor(E.c.signal),
+            modifier = Modifier.fillMaxWidth(),
+            decorationBox = { inner ->
+                Box { if (value.isEmpty()) Text(placeholder, style = style.copy(color = E.c.muted.copy(alpha = 0.6f))); inner() }
+            },
+        )
+        Spacer(Modifier.height(Space.xs))
+        HorizontalDivider(thickness = Stroke.hairline, color = E.c.line)
+    }
+}
+
+@Composable
+private fun LiveDot() {
+    val t = rememberInfiniteTransition(label = "live")
+    val a by t.animateFloat(1f, 0.25f, infiniteRepeatable(tween(700), RepeatMode.Reverse), label = "a")
+    Box(Modifier.size(8.dp).clip(CircleShape).background(E.c.signal.copy(alpha = a)))
+}
+
+/**
+ * The record control, drawn like the engraved logo: a solid core inside concentric hairline rings.
+ * Idle = ink. Live = vermilion, rings breathe outward. Disabled = rings only.
+ */
+@Composable
+private fun RecordButton(recording: Boolean, live: Boolean, enabled: Boolean, description: String, onClick: () -> Unit) {
+    val core by animateColorAsState(when { !enabled -> E.c.line; recording -> E.c.signal; else -> E.c.ink },
+        tween(Motion.base, easing = Motion.standard), label = "core")
+    val ringColor = if (recording) E.c.signal else E.c.ink
+    val t = rememberInfiniteTransition(label = "rings")
+    val phase by t.animateFloat(0f, 1f, infiniteRepeatable(tween(1800, easing = LinearEasing)), label = "phase")
+    val onCore = if (recording) E.c.onSignal else E.c.paper
+    Box(
+        Modifier.size(132.dp).clip(CircleShape).clickable(enabled = enabled, onClick = onClick)
+            .semantics { contentDescription = description },
+        contentAlignment = Alignment.Center,
+    ) {
+        Canvas(Modifier.fillMaxSize()) {
+            val r0 = size.minDimension * 0.30f
+            val rings = 7
+            for (i in 0 until rings) {
+                val f = (i + if (live) phase else 0f) / rings
+                val r = r0 + (size.minDimension / 2 - r0) * f
+                val alpha = (if (enabled) 0.55f else 0.25f) * (1f - f)
+                drawCircle(ringColor, r, style = androidx.compose.ui.graphics.drawscope.Stroke(width = 1.2f), alpha = alpha)
+            }
+            drawCircle(core, r0)
+        }
+        if (recording) Box(Modifier.size(24.dp).clip(RoundedCornerShape(Radius.tag)).background(onCore))
+        else Icon(Icons.Outlined.Mic, null, tint = onCore, modifier = Modifier.size(30.dp))
     }
 }
 
@@ -214,7 +272,7 @@ fun ConsentDialog(withLocation: Boolean, onDismiss: () -> Unit, onConfirm: (Stri
             }
         },
         confirmButton = {
-            Button(onClick = { onConfirm(participants.trim(), method) }, enabled = checked && participants.isNotBlank()) {
+            KButton(onClick = { onConfirm(participants.trim(), method) }, enabled = checked && participants.isNotBlank()) {
                 Text(stringResource(R.string.confirm))
             }
         },
@@ -224,7 +282,7 @@ fun ConsentDialog(withLocation: Boolean, onDismiss: () -> Unit, onConfirm: (Stri
 
 @Composable
 private fun LevelMeter(levels: List<Float>, active: Boolean, modifier: Modifier) {
-    val ink = if (active) E.c.ink else E.c.line
+    val ink = if (active) E.c.ink else E.c.muted.copy(alpha = 0.35f)
     val line = E.c.line
     Canvas(modifier) {
         val bars = 60
@@ -234,7 +292,7 @@ private fun LevelMeter(levels: List<Float>, active: Boolean, modifier: Modifier)
         data.forEachIndexed { i, db ->
             val norm = ((db + 60f) / 60f).coerceIn(0.03f, 1f)
             val h = norm * size.height
-            drawRoundRect(ink, Offset(i * w + w * 0.2f, (size.height - h) / 2), Size(w * 0.6f, h), CornerRadius(w))
+            drawRoundRect(ink, Offset(i * w + w * 0.3f, (size.height - h) / 2), Size(w * 0.4f, h), CornerRadius(w))
         }
     }
 }

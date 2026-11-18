@@ -7,6 +7,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -49,7 +50,9 @@ fun SearchScreen(vm: AppVm, onOpen: (Long, Float) -> Unit) {
         Header(stringResource(R.string.tab_search))
         OutlinedTextField(q, { q = it }, placeholder = { Text(stringResource(R.string.search_hint)) },
             leadingIcon = { Icon(Icons.Outlined.Search, null) }, singleLine = true,
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp))
+            shape = androidx.compose.foundation.shape.RoundedCornerShape(Radius.card),
+            colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = E.c.ink, unfocusedBorderColor = E.c.line, cursorColor = E.c.signal),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = Space.gutter))
         Spacer(Modifier.height(8.dp))
         when {
             hits == null -> Text(stringResource(R.string.search_empty), color = E.c.muted, modifier = Modifier.padding(20.dp))
@@ -58,7 +61,7 @@ fun SearchScreen(vm: AppVm, onOpen: (Long, Float) -> Unit) {
         LazyColumn {
             items(hits.orEmpty(), key = { it.segmentId }) { h ->
                 Column(Modifier.fillMaxWidth().clickable { onOpen(h.meetingId, h.startSec) }.padding(horizontal = 20.dp, vertical = 12.dp)) {
-                    Text("${h.title} · ${fmtClock(h.startSec)}", style = MaterialTheme.typography.labelLarge, color = E.c.muted)
+                    Text("${h.title} · ${fmtClock(h.startSec)}".uppercase(), style = labelStyle, maxLines = 1)
                     Text(highlight(h.text, q), style = MaterialTheme.typography.bodyLarge)
                 }
                 HorizontalDivider(color = E.c.line, modifier = Modifier.padding(horizontal = 20.dp))
@@ -71,7 +74,7 @@ fun SearchScreen(vm: AppVm, onOpen: (Long, Float) -> Unit) {
 private fun highlight(text: String, q: String) = buildAnnotatedString {
     val terms = q.trim().split(Regex("\\s+")).filter { it.isNotBlank() }
     var i = 0
-    val accent = E.c.accent
+    val accent = E.c.signal
     while (i < text.length) {
         val hit = terms.mapNotNull { t -> text.indexOf(t, i, ignoreCase = true).takeIf { it >= 0 }?.let { it to t.length } }.minByOrNull { it.first }
         if (hit == null) { append(text.substring(i)); break }
@@ -95,9 +98,10 @@ fun PeopleScreen(vm: AppVm) {
         Text(stringResource(R.string.people_body), style = MaterialTheme.typography.bodyMedium, color = E.c.muted,
             modifier = Modifier.padding(horizontal = 20.dp))
         Spacer(Modifier.height(16.dp))
-        Row(Modifier.padding(horizontal = 20.dp).fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(E.c.surface).padding(16.dp),
+        Row(Modifier.padding(horizontal = Space.gutter).fillMaxWidth().clip(RoundedCornerShape(Radius.card))
+            .border(Stroke.hairline, if (owner != null) E.c.verified else E.c.ink, RoundedCornerShape(Radius.card)).padding(Space.m),
             verticalAlignment = Alignment.CenterVertically) {
-            Icon(if (owner != null) Icons.Outlined.RecordVoiceOver else Icons.Outlined.Person, null, tint = E.c.accent)
+            Icon(if (owner != null) Icons.Outlined.RecordVoiceOver else Icons.Outlined.Person, null, tint = if (owner != null) E.c.verified else E.c.ink)
             Spacer(Modifier.width(12.dp))
             Text(stringResource(R.string.me), style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
             TextButton({ perm.launch(Manifest.permission.RECORD_AUDIO) }) {
@@ -113,8 +117,8 @@ fun PeopleScreen(vm: AppVm) {
                 LaunchedEffect(p.id) { count = vm.meetingsWith(p.id) }
                 Row(Modifier.fillMaxWidth().clickable { editing = p }.padding(horizontal = 20.dp, vertical = 14.dp),
                     verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.size(36.dp).clip(CircleShape).background(E.c.surface), contentAlignment = Alignment.Center) {
-                        Text(p.name.take(1), style = MaterialTheme.typography.titleMedium)
+                    Box(Modifier.size(40.dp).clip(CircleShape).border(Stroke.hairline, E.c.line, CircleShape), contentAlignment = Alignment.Center) {
+                        Text(p.name.take(1).uppercase(), style = MaterialTheme.typography.titleLarge)
                     }
                     Spacer(Modifier.width(12.dp))
                     Column(Modifier.weight(1f)) {
@@ -141,12 +145,12 @@ private fun PersonDialog(p: Person, onDismiss: () -> Unit, onRename: (String) ->
         text = {
             Column {
                 OutlinedTextField(name, { name = it }, label = { Text(stringResource(R.string.name_hint)) }, singleLine = true)
-                if (confirm) { Spacer(Modifier.height(12.dp)); Text(stringResource(R.string.delete_person_q), color = E.c.rec) }
+                if (confirm) { Spacer(Modifier.height(12.dp)); Text(stringResource(R.string.delete_person_q), color = E.c.signal) }
             }
         },
-        confirmButton = { Button({ onRename(name.trim()) }, enabled = name.isNotBlank()) { Text(stringResource(R.string.save)) } },
+        confirmButton = { KButton({ onRename(name.trim()) }, enabled = name.isNotBlank()) { Text(stringResource(R.string.save)) } },
         dismissButton = {
-            TextButton({ if (confirm) onDelete() else confirm = true }) { Text(stringResource(R.string.delete), color = E.c.rec) }
+            TextButton({ if (confirm) onDelete() else confirm = true }) { Text(stringResource(R.string.delete), color = E.c.signal) }
         },
     )
 }
@@ -173,16 +177,16 @@ private fun EnrollDialog(vm: AppVm, onClose: () -> Unit) {
                         // Live input level so it's obvious the mic is hearing you.
                         val lvl = (1f + kotlin.math.log10(s.level.coerceAtLeast(0.001f)) / 3f).coerceIn(0f, 1f)
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Box(Modifier.size(10.dp).clip(CircleShape).background(E.c.rec))
+                            Box(Modifier.size(10.dp).clip(CircleShape).background(E.c.signal))
                             Spacer(Modifier.width(8.dp))
-                            Text(stringResource(R.string.enroll_listening), style = MaterialTheme.typography.labelLarge, color = E.c.rec)
+                            Text(stringResource(R.string.enroll_listening), style = MaterialTheme.typography.labelLarge, color = E.c.signal)
                         }
                         Spacer(Modifier.height(8.dp))
-                        LinearProgressIndicator({ lvl }, Modifier.fillMaxWidth().height(10.dp).clip(RoundedCornerShape(5.dp)),
-                            color = E.c.ink, trackColor = E.c.line, drawStopIndicator = {})
+                        LinearProgressIndicator({ lvl }, Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(Radius.tag)),
+                            color = E.c.signal, trackColor = E.c.line, gapSize = 0.dp, drawStopIndicator = {})
                         Spacer(Modifier.height(10.dp))
-                        LinearProgressIndicator({ (s.seconds / 30f).coerceAtMost(1f) }, Modifier.fillMaxWidth(),
-                            color = E.c.accent, trackColor = E.c.line)
+                        LinearProgressIndicator({ (s.seconds / 30f).coerceAtMost(1f) }, Modifier.fillMaxWidth().height(2.dp),
+                            color = E.c.ink, trackColor = E.c.line, gapSize = 0.dp, drawStopIndicator = {})
                         Text(stringResource(if (s.seconds < 10f) R.string.enroll_keep_going else R.string.enroll_can_finish, s.seconds.toInt()),
                             style = MaterialTheme.typography.bodySmall, color = E.c.muted, modifier = Modifier.padding(top = 4.dp))
                     }
@@ -191,8 +195,8 @@ private fun EnrollDialog(vm: AppVm, onClose: () -> Unit) {
                             Row(Modifier.padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                                 Box(Modifier.size(22.dp), contentAlignment = Alignment.Center) {
                                     when {
-                                        i < s.step -> Icon(Icons.Outlined.CheckCircle, null, tint = E.c.ok)
-                                        i == s.step -> CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = E.c.accent)
+                                        i < s.step -> Icon(Icons.Outlined.CheckCircle, null, tint = E.c.verified)
+                                        i == s.step -> CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = E.c.primary)
                                         else -> Box(Modifier.size(10.dp).clip(CircleShape).background(E.c.line))
                                     }
                                 }
@@ -204,7 +208,7 @@ private fun EnrollDialog(vm: AppVm, onClose: () -> Unit) {
                     }
                     is EnrollState.Done -> {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Outlined.CheckCircle, null, tint = E.c.ok, modifier = Modifier.size(32.dp))
+                            Icon(Icons.Outlined.CheckCircle, null, tint = E.c.verified, modifier = Modifier.size(32.dp))
                             Spacer(Modifier.width(12.dp))
                             Text(stringResource(R.string.enroll_saved), style = MaterialTheme.typography.titleMedium)
                         }
@@ -212,9 +216,9 @@ private fun EnrollDialog(vm: AppVm, onClose: () -> Unit) {
                         Text(stringResource(R.string.enroll_speech_used, s.speechSec.toInt()), style = MaterialTheme.typography.bodyMedium)
                         s.consistency?.let { c ->
                             val (label, color) = when {
-                                c >= 0.7f -> R.string.quality_good to E.c.ok
+                                c >= 0.7f -> R.string.quality_good to E.c.verified
                                 c >= 0.5f -> R.string.quality_ok to E.c.ink
-                                else -> R.string.quality_weak to E.c.rec
+                                else -> R.string.quality_weak to E.c.signal
                             }
                             Text(stringResource(R.string.enroll_consistency, "%.2f".format(c), stringResource(label)),
                                 style = MaterialTheme.typography.bodyMedium, color = color)
@@ -225,18 +229,18 @@ private fun EnrollDialog(vm: AppVm, onClose: () -> Unit) {
                         "models" -> R.string.enroll_needs_models
                         "noisy" -> R.string.enroll_noisy
                         else -> R.string.enroll_failed
-                    }, s.speechSec.toInt()), color = E.c.rec)
+                    }, s.speechSec.toInt()), color = E.c.signal)
                     EnrollState.Idle -> {}
                 }
             }
         },
         confirmButton = {
             when (val s = st) {
-                EnrollState.Idle -> Button({ vm.startEnroll() }) { Text(stringResource(R.string.enroll_start)) }
-                is EnrollState.Failed -> Button({ vm.resetEnroll(); vm.startEnroll() }) { Text(stringResource(R.string.retry)) }
-                is EnrollState.Recording -> Button({ vm.finishEnroll() }, enabled = s.seconds >= 10f) { Text(stringResource(R.string.enroll_finish)) }
+                EnrollState.Idle -> KButton({ vm.startEnroll() }) { Text(stringResource(R.string.enroll_start)) }
+                is EnrollState.Failed -> KButton({ vm.resetEnroll(); vm.startEnroll() }) { Text(stringResource(R.string.retry)) }
+                is EnrollState.Recording -> KButton({ vm.finishEnroll() }, enabled = s.seconds >= 10f) { Text(stringResource(R.string.enroll_finish)) }
                 is EnrollState.Processing -> {}
-                is EnrollState.Done -> Button(onClose) { Text(stringResource(R.string.enroll_close)) }
+                is EnrollState.Done -> KButton(onClose) { Text(stringResource(R.string.enroll_close)) }
             }
         },
         dismissButton = {
@@ -272,21 +276,21 @@ fun SettingsScreen(vm: AppVm, onBack: () -> Unit) {
                     Column(Modifier.weight(1f)) {
                         Text(m.title, style = MaterialTheme.typography.titleSmall)
                         Text("${m.sizeMb} MB", style = monoStyle)
-                        if (prog != null) LinearProgressIndicator({ prog }, Modifier.fillMaxWidth().padding(top = 4.dp),
-                            color = E.c.accent, trackColor = E.c.line)
+                        if (prog != null) LinearProgressIndicator({ prog }, Modifier.fillMaxWidth().padding(top = Space.xs).height(2.dp),
+                            color = E.c.ink, trackColor = E.c.line, gapSize = 0.dp, drawStopIndicator = {})
                     }
                     Spacer(Modifier.width(8.dp))
                     when {
                         prog != null -> {}
-                        !installed -> OutlinedButton({ vm.install(m) }) { Text(stringResource(R.string.install)) }
-                        m in Models.ASR && asr == m.id -> Chip(stringResource(R.string.in_use), color = E.c.accent, dot = E.c.accent)
+                        !installed -> KOutlinedButton({ vm.install(m) }) { Text(stringResource(R.string.install)) }
+                        m in Models.ASR && asr == m.id -> Chip(stringResource(R.string.in_use), color = E.c.ink, dot = E.c.ink)
                         m in Models.ASR -> TextButton({ asr = m.id; vm.prefs.asrModel = m.id }) { Text(stringResource(R.string.use)) }
-                        else -> Chip(stringResource(R.string.installed), dot = E.c.ok)
+                        else -> Chip(stringResource(R.string.installed), dot = E.c.verified)
                     }
                 }
             }
         }
-        err?.let { Text(it, color = E.c.rec, modifier = Modifier.padding(horizontal = 20.dp)) }
+        err?.let { Text(it, color = E.c.signal, modifier = Modifier.padding(horizontal = 20.dp)) }
 
         Section(stringResource(R.string.language))
         Row(Modifier.padding(horizontal = 20.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -301,7 +305,7 @@ fun SettingsScreen(vm: AppVm, onBack: () -> Unit) {
         Slider(days, { days = it }, valueRange = 0f..30f, steps = 29,
             onValueChangeFinished = { vm.prefs.retentionDays = days.toInt() },
             modifier = Modifier.padding(horizontal = 20.dp),
-            colors = SliderDefaults.colors(thumbColor = E.c.accent, activeTrackColor = E.c.accent, inactiveTrackColor = E.c.line))
+            colors = kSliderColors())
 
         Section("")
         ToggleRow(stringResource(R.string.diarize), diar) { diar = it; vm.prefs.diarize = it }
@@ -309,8 +313,8 @@ fun SettingsScreen(vm: AppVm, onBack: () -> Unit) {
         ToggleRow(stringResource(R.string.location_default), loc) { loc = it; vm.prefs.locationDefault = it; vm.withLocation.value = it }
 
         Spacer(Modifier.height(24.dp))
-        OutlinedButton({ wipe = true }, Modifier.padding(horizontal = 20.dp),
-            colors = ButtonDefaults.outlinedButtonColors(contentColor = E.c.rec)) { Text(stringResource(R.string.wipe_all)) }
+        KOutlinedButton({ wipe = true }, Modifier.padding(horizontal = 20.dp),
+            colors = ButtonDefaults.outlinedButtonColors(contentColor = E.c.signal)) { Text(stringResource(R.string.wipe_all)) }
         Text(stringResource(R.string.privacy_footer), style = MaterialTheme.typography.bodySmall, color = E.c.muted,
             modifier = Modifier.padding(20.dp))
     }
@@ -327,7 +331,7 @@ fun SettingsScreen(vm: AppVm, onBack: () -> Unit) {
                     act.startActivity(Intent(act, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TASK or Intent.FLAG_ACTIVITY_NEW_TASK))
                     act.finishAffinity(); exitProcess(0)
                 }
-            }) { Text(stringResource(R.string.wipe_all), color = E.c.rec) }
+            }) { Text(stringResource(R.string.wipe_all), color = E.c.signal) }
         },
         dismissButton = { TextButton({ wipe = false }) { Text(stringResource(R.string.cancel)) } },
     )
@@ -335,9 +339,9 @@ fun SettingsScreen(vm: AppVm, onBack: () -> Unit) {
 
 @Composable
 private fun Section(title: String) {
-    Spacer(Modifier.height(20.dp))
-    if (title.isNotEmpty()) Text(title.uppercase(), style = MaterialTheme.typography.labelMedium, color = E.c.muted,
-        modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp))
+    Spacer(Modifier.height(Space.l))
+    if (title.isNotEmpty()) { SectionLabel(title); Spacer(Modifier.height(Space.s)) }
+    else HorizontalDivider(Modifier.padding(horizontal = Space.gutter), thickness = Stroke.hairline, color = E.c.line)
 }
 
 @Composable
@@ -345,6 +349,6 @@ private fun ToggleRow(label: String, value: Boolean, onChange: (Boolean) -> Unit
     Row(Modifier.fillMaxWidth().clickable { onChange(!value) }.padding(horizontal = 20.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically) {
         Text(label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f))
-        Switch(value, onChange, colors = SwitchDefaults.colors(checkedTrackColor = E.c.accent))
+        Switch(value, onChange, colors = kSwitchColors())
     }
 }

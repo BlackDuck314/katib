@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="docs/img/logo.png" width="140" alt="Katib logo">
+
 ```
  ██╗  ██╗  █████╗  ████████╗ ██╗ ██████╗
  ██║ ██╔╝ ██╔══██╗ ╚══██╔══╝ ██║ ██╔══██╗
@@ -14,10 +16,10 @@
 
 **On-device transcription · Arabic + English · Signed, tamper-evident transcripts · No cloud. At all.**
 
-![license](https://img.shields.io/badge/license-MIT-0F5E5A)
-![platform](https://img.shields.io/badge/platform-Android%2010%2B-1A1A18)
-![network](https://img.shields.io/badge/audio%20uploaded-never-C2410C)
-![status](https://img.shields.io/badge/status-alpha-F6F3EE?labelColor=1A1A18)
+![license](https://img.shields.io/badge/license-MIT-161614)
+![platform](https://img.shields.io/badge/platform-Android%2010%2B-161614)
+![network](https://img.shields.io/badge/audio%20uploaded-never-C93A1E)
+![status](https://img.shields.io/badge/status-alpha-F4F1EA?labelColor=161614)
 
 </div>
 
@@ -188,6 +190,10 @@ flowchart LR
     SEAL --> CH
     CH -->|export| EV[Evidence bundle] --> VER[verify_evidence.py]
 ```
+
+**Design:** ink on paper, hairline rules, an editorial serif (Amiri for Arabic), and one
+vermilion reserved for live states. Tokens live in [`design/tokens.json`](design/tokens.json)
+(primitive → semantic → component) and are mirrored in `ui/Tokens.kt`.
 
 **Go deeper:** [Architecture](docs/ARCHITECTURE.md) (components, lifecycle, storage format,
 pipeline, provenance) · [Threat model](docs/THREAT_MODEL.md) (assets, adversaries, STRIDE,
